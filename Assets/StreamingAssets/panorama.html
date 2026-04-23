@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MyGuessr Combined</title>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        #pano { 
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%; 
+            z-index: 1; 
+        }
+
+        #map-container {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            border: 4px solid white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 10;
+            transition: width 0.3s, height 0.3s;
+        }
+
+        #map-container:hover {
+            width: 450px;
+            height: 300px;
+        }
+
+        #map { width: 100%; height: 100%; }
+
+        #map-container.fullscreen {
+        width: 100% !important;
+        height: 100% !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        z-index: 100;
+    }
+    </style>
+</head>
+<body>
+    <div id="pano"></div>
+    
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+    
+    <script src="secret.js"></script>
+
+    <script>
+        let panorama;
+        let map;
+        let marker;
+        let actualMarker;
+        let resultLine;
+        let streetViewService;
+        let mapLocked = false;
+
+        function loadGoogleMaps() {
+        if (typeof GOOGLE_MAPS_API_KEY === 'undefined') {
+            console.error("Помилка: GOOGLE_MAPS_API_KEY не знайдено в secrets.js");
+            return;
+        }
+        const script = document.createElement('script');
+        // Використовуємо зворотні лапки `` для підстановки змінної
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initAll`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+
+    // Запускаємо завантаження
+    loadGoogleMaps();
+
+        function setMapState(isFullscreen, isLocked) {
+            const container = document.getElementById("map-container");
+            mapLocked = isLocked;
+
+            if (isFullscreen) {
+                container.classList.add("fullscreen");
+            } else {
+                container.classList.remove("fullscreen");
+            }
+        
+            setTimeout(() => { google.maps.event.trigger(map, "resize"); }, 300);
+        }
+
+        function initAll() {
+
+            map.addListener("click", (mapsMouseEvent) => {
+                if (mapLocked) return;
+
+                const pos = mapsMouseEvent.latLng;
+                clearVisuals();
+
+                if (marker) {
+                    marker.setPosition(pos);
+                } else {
+                    marker = new google.maps.Marker({ position: pos, map: map });
+                }
+                console.log("CLICK_POS:" + pos.lat() + "," + pos.lng());
+            });
+        }
+
+        function initAll() {
+            const defaultLoc = { lat: 50.4501, lng: 30.5234 }; 
+
+            streetViewService = new google.maps.StreetViewService();
+            panorama = new google.maps.StreetViewPanorama(
+                document.getElementById("pano"), {
+                    position: defaultLoc,
+                    pov: { heading: 0, pitch: 0 },
+                    zoom: 1,
+                    disableDefaultUI: false,
+                    showRoadLabels: false
+                }
+            );
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 20, lng: 0 },
+                zoom: 2,
+                disableDefaultUI: true,
+                zoomControl: true
+            });
+
+            map.addListener("click", (mapsMouseEvent) => {
+                const pos = mapsMouseEvent.latLng;
+                
+                clearVisuals();
+
+                if (marker) {
+                    marker.setPosition(pos);
+                } else {
+                    marker = new google.maps.Marker({ position: pos, map: map });
+                }
+
+                console.log("CLICK_POS:" + pos.lat() + "," + pos.lng());
+            });
+        }
+
+        function showResult(trueLat, trueLng) {
+            if (!marker) return;
+
+            const truePos = { lat: parseFloat(trueLat), lng: parseFloat(trueLng) };
+            const guessPos = marker.getPosition();
+
+            if (actualMarker) actualMarker.setMap(null);
+            actualMarker = new google.maps.Marker({
+                position: truePos,
+                map: map,
+                icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+                label: "✔",
+                title: "Правильна відповідь"
+            });
+
+            if (resultLine) resultLine.setMap(null);
+            resultLine = new google.maps.Polyline({
+                path: [guessPos, truePos],
+                geodesic: true,
+                strokeColor: "#FF0000",
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+                map: map
+            });
+
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(guessPos);
+            bounds.extend(truePos);
+            map.fitBounds(bounds);
+        }
+        
+        let opponentMarker = null;
+
+function showMultiplayerResult(tLat, tLng, mLat, mLng, oLat, oLng) {
+    const targetPos = { lat: parseFloat(tLat), lng: parseFloat(tLng) };
+    const myPos = { lat: parseFloat(mLat), lng: parseFloat(mLng) };
+    const oppPos = { lat: parseFloat(oLat), lng: parseFloat(oLng) };
+
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(targetPos);
+    bounds.extend(myPos);
+    bounds.extend(oppPos);
+
+    // 1. Зелений маркер - правильна відповідь
+    if (actualMarker) actualMarker.setMap(null);
+    actualMarker = new google.maps.Marker({
+        position: targetPos,
+        map: map,
+        icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
+        title: "Ціль"
+    });
+
+    // 2. Червоний маркер - твій клік (вже має бути на карті, але оновимо)
+    if (marker) marker.setPosition(myPos);
+
+    // 3. Синій маркер - клік суперника
+    if (opponentMarker) opponentMarker.setMap(null);
+    opponentMarker = new google.maps.Marker({
+        position: oppPos,
+        map: map,
+        icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+        title: "Суперник"
+    });
+
+    // 4. Лінія від тебе до цілі
+    if (resultLine) resultLine.setMap(null);
+    resultLine = new google.maps.Polyline({
+        path: [myPos, targetPos],
+        geodesic: true,
+        strokeColor: "#FF0000",
+        strokeOpacity: 1.0,
+        strokeWeight: 2,
+        map: map
+    });
+
+    map.fitBounds(bounds);
+}
+
+        function clearVisuals() {
+            if (resultLine) resultLine.setMap(null);
+            if (actualMarker) actualMarker.setMap(null);
+            if (opponentMarker) opponentMarker.setMap(null);
+        }
+
+        function updateLocation(lat, lng, isExact) {
+            const exact = (isExact === true || isExact === "true");
+           const targetLoc = { lat: parseFloat(lat), lng: parseFloat(lng) };
+    
+            clearVisuals();
+            if (marker) marker.setMap(null);
+            marker = null;
+
+            const searchRadius = exact ? 50 : 100000;
+
+            streetViewService.getPanorama({
+                location: targetLoc,
+                radius: searchRadius,
+                source: google.maps.StreetViewSource.OUTDOOR
+            }, (data, status) => {
+                if (status === "OK" && data.location) {
+                    panorama.setPano(data.location.pano);
+            
+                    const actualLat = data.location.latLng.lat();
+                    const actualLng = data.location.latLng.lng();
+
+                    if (!exact) {
+                        console.log("ACTUAL_PANO_POS:" + actualLat + "," + actualLng);
+                    }
+            
+                    if (typeof resetMap === "function") resetMap();
+            
+                    console.log("ACTUAL_PANO_POS:" + actualLat + "," + actualLng);
+                } else {
+                    console.error("Street View не знайдено: " + lat + ", " + lng);
+                    if (!exact) {
+                        console.log("RETRY_RANDOM");
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

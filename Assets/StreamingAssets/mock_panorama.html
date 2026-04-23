@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background-color: #2c3e50; color: white; display: flex; 
+               justify-content: center; align-items: center; height: 100vh; margin: 0; 
+               font-family: sans-serif; border: 5px dashed #7f8c8d; }
+        #info { text-align: center; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>MOCK MAP MODE</h1>
+        <p>Google Maps API не використовується</p>
+        <div id="coords">Чекаю на координати...</div>
+    </div>
+
+    <script>
+        // Залишаємо ту саму функцію, щоб Unity не видавала помилок
+        function updateLocation(lat, lng) {
+            document.getElementById('coords').innerHTML = 
+                "Координати від Unity: <b>" + lat + ", " + lng + "</b>";
+            console.log("Mock: отримано координати", lat, lng);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# --- Твій секретний файл ---
+# Додаємо його першим, щоб точно не забути
+Assets/StreamingAssets/secret.js
+
+# --- Тимчасові файли Unity (НЕ завантажувати!) ---
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+/[Aa]ssets/AssetStoreTools*
+
+# --- Файли проєктів Visual Studio / VS Code ---
+.vscode/
+.vs/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+*.com.apple.timemachine.plist
+
+# --- Системні файли ---
+.DS_Store
+Thumbs.db
+Desktop.ini
