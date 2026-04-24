@@ -5,8 +5,10 @@ public class MultiplayerManager : NetworkBehaviour
 {
     #region ЗМІННІ
     public UIManager ui;
-    public MapController game;
+    public GameManager game;
     public CalculatorManager calculator;
+    public TimerManager timer;
+    public MapManager map;
 
     public bool networkSyncPending = false;
 
@@ -28,7 +30,6 @@ public class MultiplayerManager : NetworkBehaviour
     #endregion
 
     #region МЕРЕЖЕВІ RPC ТА ПОДІЇ
-
     private void Start()
     {
         NetworkManager.Singleton.OnClientConnectedCallback += OnPlayerConnected;
@@ -71,13 +72,13 @@ public class MultiplayerManager : NetworkBehaviour
         netPanoLng.OnValueChanged += OnPanoCoordChanged;
 
         netMaxRounds.OnValueChanged += (oldVal, newVal) => { game.maxRounds = newVal; };
-        netTimeLimit.OnValueChanged += (oldVal, newVal) => { game.timeLimit = newVal; };
+        netTimeLimit.OnValueChanged += (oldVal, newVal) => { timer.timeLimit = newVal; };
 
         if (!IsServer)
         {
             networkSyncPending = true;
             game.maxRounds = netMaxRounds.Value;
-            game.timeLimit = netTimeLimit.Value;
+            timer.timeLimit = netTimeLimit.Value;
         }
 
         if (NetworkManager.Singleton != null)
@@ -104,12 +105,12 @@ public class MultiplayerManager : NetworkBehaviour
 
     public void OnPanoCoordChanged(float oldVal, float newVal)
     {
-        if (game.isUpdatingFromBrowser) return;
+        if (map.isUpdatingFromBrowser) return;
         if (IsServer) return;
 
-        if (game.isLoaded)
+        if (map.isLoaded)
         {
-            game.MoveTo(netPanoLat.Value, netPanoLng.Value, false);
+            map.MoveTo(netPanoLat.Value, netPanoLng.Value, false);
         }
         else
         {
@@ -179,7 +180,7 @@ public class MultiplayerManager : NetworkBehaviour
             {
                 game.ProcessResult(game.currentPanoLat, game.currentPanoLng, game.lastClickLat, game.lastClickLng);
                 game.isResultPhase = true;
-                game.isTimerRunning = false;
+                timer.isTimerRunning = false;
             }
         }
         else
@@ -246,7 +247,7 @@ public class MultiplayerManager : NetworkBehaviour
     public void StartGameClientRpc(int rounds, float time)
     {
         game.maxRounds = rounds;
-        game.timeLimit = time;
+        timer.timeLimit = time;
 
         game.ExecuteStartGameLogic();
     }
@@ -266,7 +267,7 @@ public class MultiplayerManager : NetworkBehaviour
     public void FinishRoundClientRpc(float targetLat, float targetLng, float hLat, float hLng, float cLat, float cLng, bool hReady, bool cReady)
     {
         game.isResultPhase = true;
-        game.isTimerRunning = false;
+        timer.isTimerRunning = false;
         ui.SetNextButtonState(true);
 
         float hDist = calculator.CalculateDistance(targetLat, targetLng, hLat, hLng);
@@ -280,10 +281,9 @@ public class MultiplayerManager : NetworkBehaviour
         string hStatus = hReady ? $"{hDist:F1} km" : "Didn't have time";
         string cStatus = cReady ? $"{cDist:F1} km" : "Didn't have time";
 
-        ui.ShowRoundSummary($"<b>Round summary {game.currentRound}</b>\n\n" +
-                            $"Host: <color=#FFD700>{hScore}</color> points ({hStatus})\n" +
-                            $"Client: <color=#FFD700>{cScore}</color> points ({cStatus})\n\n" +
-                            $"<i>Host {game.hostTotalScoreMP} | Client {game.clientTotalScoreMP}</i>");
+        ui.ShowRoundSummary($"Result round {game.currentRound}",
+                            $"{cScore}", cStatus, $"{game.clientTotalScoreMP}",
+                            $"{hScore}", hStatus, $"{game.hostTotalScoreMP}");
 
         bool myReady = IsServer ? hReady : cReady;
         bool oppReady = IsServer ? cReady : hReady;

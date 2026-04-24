@@ -1,11 +1,10 @@
 using TMPro;
 using UnityEngine;
-using TMPro;
 using UnityEngine.UI;
-using Cysharp.Threading.Tasks.Triggers;
 
 public class UIManager : MonoBehaviour
 {
+    #region ЗМІННІ
     [Header("UI: Панелі")]
     public GameObject mainMenuPanel;
     public GameObject singleplayerPanel;
@@ -16,12 +15,23 @@ public class UIManager : MonoBehaviour
     public GameObject lobbyPanel;
 
     [Header("UI: елементи")]
+    //Ігровий дані
     public TextMeshProUGUI distanceText;
     public TextMeshProUGUI pointsText;
     public TextMeshProUGUI roundCountText;
     public TextMeshProUGUI timerText;
+
     public TextMeshProUGUI summaryScoreText;
-    public TextMeshProUGUI roundSummaryText;
+    //Підсумок раунду
+    public TextMeshProUGUI currentRoundText;
+
+    public TextMeshProUGUI hScoreText;
+    public TextMeshProUGUI cScoreText;
+    public TextMeshProUGUI hStatusText;
+    public TextMeshProUGUI cStatusText;
+    public TextMeshProUGUI hTotalScoreText;
+    public TextMeshProUGUI cTotalScoreText;
+    //Ігровий інтерфейс
     public TextMeshProUGUI nextButtonText;
     public Button nextButton;
     public Button menuButtonInGame;
@@ -42,15 +52,9 @@ public class UIManager : MonoBehaviour
     [Header("UI: Налаштування")]
     public int tempMaxRounds = 5;
     public float tempTimeLimit = 60f;
+    #endregion
 
-    public void showPanel (GameObject panel, bool isActive)
-    {
-        if (panel != null)
-        {
-            panel.SetActive(isActive);
-        }
-    }
-
+    #region SET
     public void ChangeRounds(int amount)
     {
         tempMaxRounds = Mathf.Clamp(tempMaxRounds + amount, 2, 10);
@@ -103,6 +107,43 @@ public class UIManager : MonoBehaviour
         if (startGameButton != null) startGameButton.interactable = isInteractable;
     }
 
+    public void SetCurrentRoundText(string text)
+    {
+        if (currentRoundText != null) currentRoundText.text = text;
+    }
+
+    public void SetHScoreText(string text)
+    {
+        if (hScoreText != null) hScoreText.text = text;
+    }
+
+    public void SetCScoreText(string text)
+    {
+        if (cScoreText != null) cScoreText.text = text;
+    }
+
+    public void SetHStatusText(string text)
+    {
+        if (hStatusText != null) hStatusText.text = text;
+    }
+
+    public void SetCStatusText(string text)
+    {
+        if (cStatusText != null) cStatusText.text = text;
+    }
+
+    public void SetHTotalScoreText(string text)
+    {
+        if (hTotalScoreText != null) hTotalScoreText.text = text;
+    }
+
+    public void SetCTotalScoreText(string text)
+    {
+        if (cTotalScoreText != null) cTotalScoreText.text = text;
+    }
+    #endregion
+
+    #region Налаштування UI
     public void StartGameUI()
     {
         showPanel(singleplayerPanel, false);
@@ -124,6 +165,16 @@ public class UIManager : MonoBehaviour
         SetNextButtonText("Guessr");
         SetNextButtonState(false);
         showPanel(roundSummaryPanel, false);
+    }
+    #endregion
+
+    #region SHOW
+    public void showPanel(GameObject panel, bool isActive)
+    {
+        if (panel != null)
+        {
+            panel.SetActive(isActive);
+        }
     }
 
     public void ShowMainMenu()
@@ -160,6 +211,7 @@ public class UIManager : MonoBehaviour
     public void ShowFinalSummary(bool IsSpawned, int hostTotalScoreMP, int clientTotalScoreMP, int totalScore)
     {
         summaryPanel.SetActive(true);
+        roundSummaryPanel.SetActive(false);
 
         if (IsSpawned)
         {
@@ -182,12 +234,30 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void ShowRoundSummary(string summaryText)
+    public void ShowRoundSummary(string currentRound, 
+        string cScore, 
+        string cStatus, 
+        string cTotalScore,
+        string hScore,
+        string hStatus,
+        string hTotalScore
+        )
     {
         showPanel(roundSummaryPanel, true);
-        if (roundSummaryText != null) roundSummaryText.text = summaryText;
-    }
 
+        SetCurrentRoundText(currentRound);
+
+        SetCScoreText(cScore);
+        SetCStatusText(cStatus);
+        SetCTotalScoreText(cTotalScore);
+
+        SetHScoreText(hScore);
+        SetHStatusText(hStatus);
+        SetHTotalScoreText(hTotalScore);
+    }
+    #endregion
+
+    #region Логіка UI
     public void UpdateSettingsUI()
     {
         if (roundsSettingsText != null && netRoundsSettingsText != null)
@@ -210,4 +280,5 @@ public class UIManager : MonoBehaviour
             timerText.color = seconds <= 10 ? Color.red : Color.white;
         }
     }
+    #endregion
 }
