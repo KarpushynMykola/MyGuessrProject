@@ -1,3 +1,4 @@
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -27,6 +28,12 @@ public class MultiplayerManager : NetworkBehaviour
 
     public NetworkVariable<float> netRemainingTime = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<float> netTimeLimit = new NetworkVariable<float>(60f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public NetworkVariable<FixedString32Bytes> hostName = new NetworkVariable<FixedString32Bytes>("Host", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> hostLevel = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    public NetworkVariable<FixedString32Bytes> clientName = new NetworkVariable<FixedString32Bytes>("Player", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> clientLevel = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     #endregion
 
     #region МЕРЕЖЕВІ RPC ТА ПОДІЇ
@@ -51,7 +58,7 @@ public class MultiplayerManager : NetworkBehaviour
         if (IsServer)
         {
             int playerCount = NetworkManager.Singleton.ConnectedClientsIds.Count;
-            ui.SetPlayerStatusText($"Player in lobby: {playerCount}");
+            ui.SetPlayerStatusText($"{hostName.Value}, {clientName.Value}");
             ui.SetStartGameButtonState(playerCount >= 2);
         }
     }
@@ -61,7 +68,7 @@ public class MultiplayerManager : NetworkBehaviour
         if (IsServer)
         {
             int playerCount = NetworkManager.Singleton.ConnectedClientsIds.Count;
-            ui.SetPlayerStatusText($"Player in lobby: {playerCount}");
+            ui.SetPlayerStatusText($"{hostName.Value}, {clientName.Value}");
             ui.SetStartGameButtonState(playerCount >= 2);
         }
     }
@@ -73,6 +80,11 @@ public class MultiplayerManager : NetworkBehaviour
 
         netMaxRounds.OnValueChanged += (oldVal, newVal) => { game.maxRounds = newVal; };
         netTimeLimit.OnValueChanged += (oldVal, newVal) => { timer.timeLimit = newVal; };
+
+        hostName.OnValueChanged += (oldV, newV) => ui.UpdateLobbyUI();
+        clientName.OnValueChanged += (oldV, newV) => ui.UpdateLobbyUI();
+
+        SyncProfileServerRpc(ProfileManager.Instance.activeProfile.playerName, ProfileManager.Instance.activeProfile.level);
 
         if (!IsServer)
         {
@@ -128,7 +140,7 @@ public class MultiplayerManager : NetworkBehaviour
 
         if (!string.IsNullOrEmpty(code))
         {
-            ui.SetJoinCodeText("Code: " + code);
+            ui.SetJoinCodeText(code.ToString());
         }
         else
         {
@@ -195,7 +207,14 @@ public class MultiplayerManager : NetworkBehaviour
             }
             else
             {
-                if (game.currentRound >= game.maxRounds) ui.ShowFinalSummary(IsSpawned, game.hostTotalScoreMP, game.clientTotalScoreMP, game.totalScore);
+                if (game.currentRound >= game.maxRounds) 
+                    ui.ShowFinalSummary(
+                        IsSpawned, 
+                        $"{hostName.Value}",
+                        $"{clientName.Value}", 
+                        game.hostTotalScoreMP, 
+                        game.clientTotalScoreMP, 
+                        game.totalScore);
                 else game.StartNextRound();
             }
         }
@@ -223,6 +242,21 @@ public class MultiplayerManager : NetworkBehaviour
                                  hostGuessLat.Value, hostGuessLng.Value,
                                  clientGuessLat.Value, clientGuessLng.Value,
                                  hostReady.Value, clientReady.Value);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SyncProfileServerRpc(string pName, int pLevel, ServerRpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
+        {
+            hostName.Value = pName;
+            hostLevel.Value = pLevel;
+        }
+        else
+        {
+            clientName.Value = pName;
+            clientLevel.Value = pLevel;
         }
     }
 
@@ -282,6 +316,7 @@ public class MultiplayerManager : NetworkBehaviour
         string cStatus = cReady ? $"{cDist:F1} km" : "Didn't have time";
 
         ui.ShowRoundSummary($"Result round {game.currentRound}",
+                            $"{hostName.Value}", $"{clientName.Value}",
                             $"{cScore}", cStatus, $"{game.clientTotalScoreMP}",
                             $"{hScore}", hStatus, $"{game.hostTotalScoreMP}");
 
@@ -316,7 +351,25 @@ public class MultiplayerManager : NetworkBehaviour
     [ClientRpc]
     public void ShowFinalSummaryClientRpc()
     {
-        ui.ShowFinalSummary(IsSpawned, game.hostTotalScoreMP, game.clientTotalScoreMP, game.totalScore);
+        ui.ShowFinalSummary(
+            IsSpawned, 
+            $"{hostName.Value}", 
+            $"{clientName.Value}", 
+            game.hostTotalScoreMP, 
+            game.clientTotalScoreMP, 
+            game.totalScore
+            );
+
+        if (IsServer)
+        {
+            ProfileManager.Instance.AddGameResult(game.hostTotalScoreMP);
+            ProfileManager.Instance.UpdateXPNetwork(game.hostTotalScoreMP, game.clientTotalScoreMP, clientLevel.Value);
+        }
+        else
+        {
+            ProfileManager.Instance.AddGameResult(game.clientTotalScoreMP);
+            ProfileManager.Instance.UpdateXPNetwork(game.clientTotalScoreMP, game.hostTotalScoreMP, hostLevel.Value);
+        }
     }
 
     [ClientRpc]

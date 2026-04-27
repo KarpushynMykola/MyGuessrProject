@@ -13,5 +13,5 @@ MonoBehaviour:
   m_Name: MapPort 1
   m_EditorClassIdentifier: 
   connectionTimeout: 7000
-  inPort: 7065
-  outPort: 7066
+  inPort: 7063
+  outPort: 7064

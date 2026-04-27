@@ -19,6 +19,10 @@ public class MapManager : MonoBehaviour
     public object browserClient;
     public bool isUpdatingFromBrowser = false;
     public bool isLoaded = false;
+
+    [Header("Налаштування контенту")]
+    public LocationData[] allPacks;
+    public int selectedPackIndex = -1;
     #endregion
 
     #region ВЗАЄМОДІЯ З БРАУЗЕРОМ ТА КАРТОЮ
@@ -50,10 +54,24 @@ public class MapManager : MonoBehaviour
         bool IsSpawned = game.IsSpawned;
         bool IsServer = game.IsServer;
 
+        float newLat, newLng;
+
         if (IsSpawned && !IsServer) return;
 
-        float newLat = UnityEngine.Random.Range(-20f, 60f);
-        float newLng = UnityEngine.Random.Range(-100f, 130f);
+        if (selectedPackIndex >= 0 && selectedPackIndex < allPacks.Length)
+        {
+            LocationData pack = allPacks[selectedPackIndex];
+            MapPoint point = pack.GetRandomLocation();
+            newLat = point.latitude;
+            newLng = point.longitude;
+            Debug.Log($"[MapManager] Локація з паку {pack.packName}: {point.locationName}");
+        }
+        else 
+        { 
+            newLat = UnityEngine.Random.Range(-20f, 60f);
+            newLng = UnityEngine.Random.Range(-100f, 130f);
+            Debug.Log("[MapManager] Повний рандом по світу");
+        }
 
         MoveTo(newLat, newLng, true);
     }

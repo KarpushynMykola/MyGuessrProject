@@ -4,6 +4,10 @@ using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
+    #region ПОСИЛАННЯ
+    public MapManager map;
+    #endregion
+
     #region ЗМІННІ
     [Header("UI: Панелі")]
     public GameObject mainMenuPanel;
@@ -13,6 +17,7 @@ public class UIManager : MonoBehaviour
     public GameObject roundSummaryPanel;
     public GameObject summaryPanel;
     public GameObject lobbyPanel;
+    public GameObject profilePanel;
 
     [Header("UI: елементи")]
     //Ігровий дані
@@ -31,6 +36,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI cStatusText;
     public TextMeshProUGUI hTotalScoreText;
     public TextMeshProUGUI cTotalScoreText;
+    public TextMeshProUGUI hostText;
+    public TextMeshProUGUI clientText;
     //Ігровий інтерфейс
     public TextMeshProUGUI nextButtonText;
     public Button nextButton;
@@ -38,9 +45,11 @@ public class UIManager : MonoBehaviour
     //Синглплеєр
     public TextMeshProUGUI roundsSettingsText;
     public TextMeshProUGUI timerSettingsText;
+    public Dropdown singleMapSelect;
     //Мультиплеєр
     public TextMeshProUGUI netRoundsSettingsText;
     public TextMeshProUGUI netTimerSettingsText;
+    public Dropdown netMapSelect;
 
     public TMP_Text joinCodeText;
     public TMP_InputField joinInputField;
@@ -48,6 +57,15 @@ public class UIManager : MonoBehaviour
     public Button hostButton;
     public Button joinButton;
     public Button startGameButton;
+
+    //Профіль
+    public TMP_Text nameText;
+    public TMP_Text levelText;
+    public TMP_Text gamesPlayedText;
+    public TMP_Text bestScoresText;
+    public TMP_InputField changeNameField;
+    public Image panelOfLevel;
+    public TMP_Text playedLevelText;
 
     [Header("UI: Налаштування")]
     public int tempMaxRounds = 5;
@@ -65,6 +83,11 @@ public class UIManager : MonoBehaviour
     {
         tempTimeLimit = Mathf.Clamp(tempTimeLimit + amount, 30, 120);
         UpdateSettingsUI();
+    }
+
+    public void OnMapTypeChanged(int index)
+    {
+        map.selectedPackIndex = index - 1;
     }
 
     public void SetDistanceText(string text)
@@ -141,6 +164,16 @@ public class UIManager : MonoBehaviour
     {
         if (cTotalScoreText != null) cTotalScoreText.text = text;
     }
+
+    public void SetHostText(string text)
+    {
+        if (hostText != null) hostText.text = text;
+    }
+
+    public void SetClientText(string text)
+    {
+        if (clientText != null) clientText.text = text;
+    }
     #endregion
 
     #region Налаштування UI
@@ -185,6 +218,7 @@ public class UIManager : MonoBehaviour
         showPanel(multiplayerPanel, false);
         showPanel(roundSummaryPanel, false);
         showPanel(lobbyPanel, false);
+        showPanel(profilePanel, false);
     }
 
     public void ShowSingleplayerSettings()
@@ -201,6 +235,14 @@ public class UIManager : MonoBehaviour
         UpdateSettingsUI();
     }
 
+    public void ShowProfile()
+    {
+
+        showPanel(profilePanel, true);
+        showPanel(mainMenuPanel, false);
+        UpdateProfileUI();
+    }
+
     public void ShowLobby()
     {
         multiplayerPanel.SetActive(false);
@@ -208,7 +250,14 @@ public class UIManager : MonoBehaviour
         SetStartGameButtonState(false);
     }
 
-    public void ShowFinalSummary(bool IsSpawned, int hostTotalScoreMP, int clientTotalScoreMP, int totalScore)
+    public void ShowFinalSummary(
+        bool IsSpawned,
+        string hostName,
+        string clientName,
+        int hostTotalScoreMP, 
+        int clientTotalScoreMP, 
+        int totalScore
+        )
     {
         summaryPanel.SetActive(true);
         roundSummaryPanel.SetActive(false);
@@ -217,15 +266,15 @@ public class UIManager : MonoBehaviour
         {
             string winnerText = "Final result";
             if (hostTotalScoreMP > clientTotalScoreMP)
-                winnerText = "<color=#FFD700>Host won</color>";
+                winnerText = $"<color=#FFD700>{hostName} won</color>";
             else if (clientTotalScoreMP > hostTotalScoreMP)
-                winnerText = "<color=#FFD700>Client won</color>";
+                winnerText = $"<color=#FFD700>{clientName} won</color>";
             else
                 winnerText = "<color=#FFFFFF>Draw</color>";
 
             summaryScoreText.text = $"<b>Final result</b>\n\n" +
-                                   $"Host: {hostTotalScoreMP} points\n" +
-                                   $"Client: {clientTotalScoreMP} points\n\n" +
+                                   $"{hostName}: {hostTotalScoreMP} points\n" +
+                                   $"{clientName}: {clientTotalScoreMP} points\n\n" +
                                    $"{winnerText}";
         }
         else
@@ -234,7 +283,9 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void ShowRoundSummary(string currentRound, 
+    public void ShowRoundSummary(string currentRound,
+        string hostName,
+        string clientName,
         string cScore, 
         string cStatus, 
         string cTotalScore,
@@ -246,6 +297,9 @@ public class UIManager : MonoBehaviour
         showPanel(roundSummaryPanel, true);
 
         SetCurrentRoundText(currentRound);
+
+        SetHostText(hostName);
+        SetClientText(clientName);
 
         SetCScoreText(cScore);
         SetCStatusText(cStatus);
@@ -278,6 +332,80 @@ public class UIManager : MonoBehaviour
             int seconds = Mathf.CeilToInt(timeValue);
             timerText.text = $"{seconds}с";
             timerText.color = seconds <= 10 ? Color.red : Color.white;
+        }
+    }
+
+    public void UpdateProfileUI()
+    {
+        var profile = ProfileManager.Instance.activeProfile;
+        playedLevelText.color = Color.white;
+
+        nameText.text = profile.playerName;
+
+        levelText.text = $"Level: {profile.level}";
+        gamesPlayedText.text = $"Played: {profile.gamesPlayed}";
+        bestScoresText.text = $"Record: {profile.bestScore}";
+
+        UpdatePlayedLevel(profile.level);
+    }
+
+    public void UpdatePlayedLevel(int level)
+    {
+        if (level >= 0 && level < 200)
+        {
+            playedLevelText.text = "Newcomer";
+            playedLevelText.color = Color.grey;
+            panelOfLevel.color = Color.white;
+        }
+        else if (level >= 200 && level < 300)
+        {
+            playedLevelText.text = "Wanderer";
+            panelOfLevel.color = Color.blue;
+        }
+        else if (level >= 300 && level < 400)
+        {
+            playedLevelText.text = "Conductor";
+            panelOfLevel.color = Color.green;
+        }
+        else if (level >= 400 && level < 500)
+        {
+            playedLevelText.text = "Cartographer";
+            panelOfLevel.color = Color.purple;
+        }
+        else if (level >= 500 && level < 600)
+        {
+            playedLevelText.text = "Geo-Analyst";
+            panelOfLevel.color = Color.orange;
+        }
+        else if (level >= 600 && level < 700)
+        {
+            playedLevelText.text = "Expert";
+            panelOfLevel.color = Color.red;
+        }
+    }
+
+    public void UpdateLobbyUI()
+    {
+
+    }
+
+    public void HandleCopuButton()
+    {
+        if (joinCodeText.text != "Creating") 
+            GUIUtility.systemCopyBuffer = joinCodeText.text;
+    }
+
+    public void HandleSaveButtonClicked()
+    {
+        string newName = changeNameField.text;
+
+        if (!string.IsNullOrEmpty(newName))
+        {
+            ProfileManager.Instance.SetPlayerName(newName);
+
+            Debug.Log("Ім'я збережено!");
+
+            UpdateProfileUI();
         }
     }
     #endregion
