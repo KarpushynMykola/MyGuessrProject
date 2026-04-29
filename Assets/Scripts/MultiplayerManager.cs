@@ -81,9 +81,6 @@ public class MultiplayerManager : NetworkBehaviour
         netMaxRounds.OnValueChanged += (oldVal, newVal) => { game.maxRounds = newVal; };
         netTimeLimit.OnValueChanged += (oldVal, newVal) => { timer.timeLimit = newVal; };
 
-        hostName.OnValueChanged += (oldV, newV) => ui.UpdateLobbyUI();
-        clientName.OnValueChanged += (oldV, newV) => ui.UpdateLobbyUI();
-
         SyncProfileServerRpc(ProfileManager.Instance.activeProfile.playerName, ProfileManager.Instance.activeProfile.level);
 
         if (!IsServer)
@@ -264,8 +261,6 @@ public class MultiplayerManager : NetworkBehaviour
     private void StartHostGameClientRpc()
     {
         ui.showPanel(ui.lobbyPanel, false);
-
-        Debug.Log("Гра починається для всіх!");
 
         if (IsServer)
         {

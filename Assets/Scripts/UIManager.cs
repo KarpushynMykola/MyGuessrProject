@@ -218,6 +218,7 @@ public class UIManager : MonoBehaviour
         showPanel(multiplayerPanel, false);
         showPanel(roundSummaryPanel, false);
         showPanel(lobbyPanel, false);
+        showPanel(summaryPanel, false); 
         showPanel(profilePanel, false);
     }
 
@@ -382,11 +383,6 @@ public class UIManager : MonoBehaviour
             playedLevelText.text = "Expert";
             panelOfLevel.color = Color.red;
         }
-    }
-
-    public void UpdateLobbyUI()
-    {
-
     }
 
     public void HandleCopuButton()

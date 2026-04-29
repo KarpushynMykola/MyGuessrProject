@@ -61,86 +61,82 @@
         let mapLocked = false;
 
         function loadGoogleMaps() {
-        if (typeof GOOGLE_MAPS_API_KEY === 'undefined') {
-            console.error("Помилка: GOOGLE_MAPS_API_KEY не знайдено в secrets.js");
-            return;
+    if (typeof GOOGLE_MAPS_API_KEY === 'undefined') {
+        console.error("Помилка: GOOGLE_MAPS_API_KEY не знайдено");
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initAll`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+}
+
+loadGoogleMaps();
+
+function initAll() {
+    const defaultLoc = { lat: 50.4501, lng: 30.5234 };
+
+    streetViewService = new google.maps.StreetViewService();
+    
+    panorama = new google.maps.StreetViewPanorama(
+        document.getElementById("pano"), {
+            position: defaultLoc,
+            pov: { heading: 0, pitch: 0 },
+            zoom: 1,
+            disableDefaultUI: false,
+            showRoadLabels: true,
+            addressControl: false,   // ТУТ РІШЕННЯ: Прибирає напис у верхньому лівому кутку
+            fullscreenControl: false
         }
-        const script = document.createElement('script');
-        // Використовуємо зворотні лапки `` для підстановки змінної
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initAll`;
-        script.async = true;
-        script.defer = true;
-        document.head.appendChild(script);
+    );
+
+    map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 20, lng: 0 },
+        zoom: 2,
+        disableDefaultUI: true,
+        zoomControl: true,
+        // БАГ №1: Вимикаємо клікабельність іконок об'єктів (Майдан, кафе і т.д.)
+        clickableIcons: false 
+    });
+
+    map.addListener("click", (mapsMouseEvent) => {
+        // БАГ №2: Якщо карта заблокована (фаза результатів), нічого не робимо
+        if (mapLocked) return; 
+
+        const pos = mapsMouseEvent.latLng;
+        
+        // Очищуємо тільки якщо це новий клік у фазі гри
+        clearVisuals(); 
+
+        if (marker) {
+            marker.setPosition(pos);
+        } else {
+            marker = new google.maps.Marker({ position: pos, map: map });
+        }
+
+        console.log("CLICK_POS:" + pos.lat() + "," + pos.lng());
+    });
+}
+
+function setMapState(isFullscreen, isLocked) {
+    const container = document.getElementById("map-container");
+    mapLocked = isLocked; // Оновлюємо стан блокування
+
+    if (isFullscreen) {
+        container.classList.add("fullscreen");
+    } else {
+        container.classList.remove("fullscreen");
     }
 
-    // Запускаємо завантаження
-    loadGoogleMaps();
+    setTimeout(() => { google.maps.event.trigger(map, "resize"); }, 300);
+}
 
-        function setMapState(isFullscreen, isLocked) {
-            const container = document.getElementById("map-container");
-            mapLocked = isLocked;
-
-            if (isFullscreen) {
-                container.classList.add("fullscreen");
-            } else {
-                container.classList.remove("fullscreen");
-            }
-        
-            setTimeout(() => { google.maps.event.trigger(map, "resize"); }, 300);
-        }
-
-        function initAll() {
-
-            map.addListener("click", (mapsMouseEvent) => {
-                if (mapLocked) return;
-
-                const pos = mapsMouseEvent.latLng;
-                clearVisuals();
-
-                if (marker) {
-                    marker.setPosition(pos);
-                } else {
-                    marker = new google.maps.Marker({ position: pos, map: map });
-                }
-                console.log("CLICK_POS:" + pos.lat() + "," + pos.lng());
-            });
-        }
-
-        function initAll() {
-            const defaultLoc = { lat: 50.4501, lng: 30.5234 }; 
-
-            streetViewService = new google.maps.StreetViewService();
-            panorama = new google.maps.StreetViewPanorama(
-                document.getElementById("pano"), {
-                    position: defaultLoc,
-                    pov: { heading: 0, pitch: 0 },
-                    zoom: 1,
-                    disableDefaultUI: false,
-                    showRoadLabels: false
-                }
-            );
-
-            map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 20, lng: 0 },
-                zoom: 2,
-                disableDefaultUI: true,
-                zoomControl: true
-            });
-
-            map.addListener("click", (mapsMouseEvent) => {
-                const pos = mapsMouseEvent.latLng;
-                
-                clearVisuals();
-
-                if (marker) {
-                    marker.setPosition(pos);
-                } else {
-                    marker = new google.maps.Marker({ position: pos, map: map });
-                }
-
-                console.log("CLICK_POS:" + pos.lat() + "," + pos.lng());
-            });
-        }
+function clearVisuals() {
+    if (resultLine) resultLine.setMap(null);
+    if (actualMarker) actualMarker.setMap(null);
+    if (opponentMarker) opponentMarker.setMap(null);
+}
 
         function showResult(trueLat, trueLng) {
             if (!marker) return;
@@ -219,12 +215,6 @@ function showMultiplayerResult(tLat, tLng, mLat, mLng, oLat, oLng) {
 
     map.fitBounds(bounds);
 }
-
-        function clearVisuals() {
-            if (resultLine) resultLine.setMap(null);
-            if (actualMarker) actualMarker.setMap(null);
-            if (opponentMarker) opponentMarker.setMap(null);
-        }
 
         function updateLocation(lat, lng, isExact) {
             const exact = (isExact === true || isExact === "true");

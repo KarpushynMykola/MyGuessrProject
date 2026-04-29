@@ -265,7 +265,7 @@ public class GameManager : NetworkBehaviour
         if (currentRound >= maxRounds)
             ui.SetNextButtonText(IsSpawned && !IsServer ? "Waiting result" : "Result");
         else
-            ui.SetNextButtonText(IsSpawned && !IsServer ? "Wait Host" : "Continua");
+            ui.SetNextButtonText(IsSpawned && !IsServer ? "Wait Host" : "Continue");
     }
     #endregion
 }
