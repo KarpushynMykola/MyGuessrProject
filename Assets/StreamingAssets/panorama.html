@@ -86,27 +86,34 @@ function initAll() {
             zoom: 1,
             disableDefaultUI: false,
             showRoadLabels: true,
-            addressControl: false,   // ТУТ РІШЕННЯ: Прибирає напис у верхньому лівому кутку
+            addressControl: false,
             fullscreenControl: false
         }
     );
 
     map = new google.maps.Map(document.getElementById("map"), {
-        center: { lat: 20, lng: 0 },
-        zoom: 2,
-        disableDefaultUI: true,
-        zoomControl: true,
-        // БАГ №1: Вимикаємо клікабельність іконок об'єктів (Майдан, кафе і т.д.)
-        clickableIcons: false 
-    });
+    center: { lat: 20, lng: 0 },
+    zoom: 2,
+    disableDefaultUI: true,
+    zoomControl: true,
+    clickableIcons: false,
+    
+    restriction: {
+        latLngBounds: {
+            north: 85,
+            south: -85,
+            west: -180,
+            east: 180
+        },
+        strictBounds: false
+    }
+});
 
     map.addListener("click", (mapsMouseEvent) => {
-        // БАГ №2: Якщо карта заблокована (фаза результатів), нічого не робимо
         if (mapLocked) return; 
 
         const pos = mapsMouseEvent.latLng;
         
-        // Очищуємо тільки якщо це новий клік у фазі гри
         clearVisuals(); 
 
         if (marker) {
@@ -121,7 +128,7 @@ function initAll() {
 
 function setMapState(isFullscreen, isLocked) {
     const container = document.getElementById("map-container");
-    mapLocked = isLocked; // Оновлюємо стан блокування
+    mapLocked = isLocked;
 
     if (isFullscreen) {
         container.classList.add("fullscreen");
@@ -149,7 +156,6 @@ function clearVisuals() {
                 position: truePos,
                 map: map,
                 icon: "http://maps.google.com/mapfiles/ms/icons/green-dot.png",
-                label: "✔",
                 title: "Правильна відповідь"
             });
 
@@ -181,7 +187,6 @@ function showMultiplayerResult(tLat, tLng, mLat, mLng, oLat, oLng) {
     bounds.extend(myPos);
     bounds.extend(oppPos);
 
-    // 1. Зелений маркер - правильна відповідь
     if (actualMarker) actualMarker.setMap(null);
     actualMarker = new google.maps.Marker({
         position: targetPos,
@@ -190,10 +195,8 @@ function showMultiplayerResult(tLat, tLng, mLat, mLng, oLat, oLng) {
         title: "Ціль"
     });
 
-    // 2. Червоний маркер - твій клік (вже має бути на карті, але оновимо)
     if (marker) marker.setPosition(myPos);
 
-    // 3. Синій маркер - клік суперника
     if (opponentMarker) opponentMarker.setMap(null);
     opponentMarker = new google.maps.Marker({
         position: oppPos,
@@ -202,7 +205,6 @@ function showMultiplayerResult(tLat, tLng, mLat, mLng, oLat, oLng) {
         title: "Суперник"
     });
 
-    // 4. Лінія від тебе до цілі
     if (resultLine) resultLine.setMap(null);
     resultLine = new google.maps.Polyline({
         path: [myPos, targetPos],

@@ -30,10 +30,10 @@ public class MultiplayerManager : NetworkBehaviour
     public NetworkVariable<float> netTimeLimit = new NetworkVariable<float>(60f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public NetworkVariable<FixedString32Bytes> hostName = new NetworkVariable<FixedString32Bytes>("Host", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    public NetworkVariable<int> hostLevel = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> hostRating = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public NetworkVariable<FixedString32Bytes> clientName = new NetworkVariable<FixedString32Bytes>("Player", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    public NetworkVariable<int> clientLevel = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<int> clientRating = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     #endregion
 
     #region МЕРЕЖЕВІ RPC ТА ПОДІЇ
@@ -58,8 +58,7 @@ public class MultiplayerManager : NetworkBehaviour
         if (IsServer)
         {
             int playerCount = NetworkManager.Singleton.ConnectedClientsIds.Count;
-            ui.SetPlayerStatusText($"{hostName.Value}, {clientName.Value}");
-            ui.SetStartGameButtonState(playerCount >= 2);
+            ui.SetPlayerStatusText($"{clientName.Value}: <color=red>Waiting</color>");
         }
     }
 
@@ -68,7 +67,7 @@ public class MultiplayerManager : NetworkBehaviour
         if (IsServer)
         {
             int playerCount = NetworkManager.Singleton.ConnectedClientsIds.Count;
-            ui.SetPlayerStatusText($"{hostName.Value}, {clientName.Value}");
+            ui.SetPlayerStatusText($"Waiting");
             ui.SetStartGameButtonState(playerCount >= 2);
         }
     }
@@ -94,6 +93,31 @@ public class MultiplayerManager : NetworkBehaviour
         {
             NetworkManager.Singleton.OnClientDisconnectCallback += HandleDisconnect;
         }
+
+        if (IsServer)
+        {
+            ui.SetStartButtonText("Start");
+            ui.SetStartGameButtonState(false);
+            clientReady.Value = false;
+        }
+        else
+        {
+            ui.SetStartButtonText("Ready");
+            ui.SetStartGameButtonState(true);
+        }
+
+        clientReady.OnValueChanged += (oldVal, newVal) => {
+            if (IsServer)
+            {
+                ui.SetStartGameButtonState(newVal);
+                string status = newVal ? "Ready" : "Waiting";
+                ui.SetPlayerStatusText($"{clientName.Value}: {status}");
+            }
+            else
+            {
+                ui.SetStartButtonText(newVal ? "Not ready" : "Ready");
+            }
+        };
     }
 
     public override void OnNetworkDespawn()
@@ -131,7 +155,7 @@ public class MultiplayerManager : NetworkBehaviour
     {
         ui.ShowLobby();
         ui.SetJoinCodeText("Creating");
-        ui.SetPlayerStatusText("Waiting players");
+        ui.SetPlayerStatusText("Waiting");
 
         string code = await RelayManager.Instance.CreateRelay();
 
@@ -153,14 +177,11 @@ public class MultiplayerManager : NetworkBehaviour
         try
         {
             await RelayManager.Instance.JoinRelay(code);
-
             ui.ShowLobby();
-            ui.SetStartGameButtonState(false);
             ui.SetPlayerStatusText("You've joined! Waiting host");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Помилка приєднання до Relay: {e.Message}");
             ui.joinCodeText.text = e.Message;
         }
     }
@@ -169,7 +190,14 @@ public class MultiplayerManager : NetworkBehaviour
     {
         if (IsServer)
         {
-            StartHostGameClientRpc();
+            if (clientReady.Value)
+            {
+                StartHostGameClientRpc();
+            }
+        }
+        else
+        {
+            ToggleReadyServerRpc();
         }
     }
 
@@ -218,6 +246,12 @@ public class MultiplayerManager : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
+    public void ToggleReadyServerRpc()
+    {
+        clientReady.Value = !clientReady.Value;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
     public void SubmitReadyServerRpc(float lat, float lng, ServerRpcParams rpcParams = default)
     {
         if (rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
@@ -248,12 +282,12 @@ public class MultiplayerManager : NetworkBehaviour
         if (rpcParams.Receive.SenderClientId == NetworkManager.ServerClientId)
         {
             hostName.Value = pName;
-            hostLevel.Value = pLevel;
+            hostRating.Value = pLevel;
         }
         else
         {
             clientName.Value = pName;
-            clientLevel.Value = pLevel;
+            clientRating.Value = pLevel;
         }
     }
 
@@ -261,14 +295,11 @@ public class MultiplayerManager : NetworkBehaviour
     private void StartHostGameClientRpc()
     {
         ui.showPanel(ui.lobbyPanel, false);
+        game.StartGame();
 
         if (IsServer)
         {
-            game.StartGame();
-        }
-        else
-        {
-            game.StartGame();
+            clientReady.Value = false;
         }
     }
 
@@ -357,13 +388,26 @@ public class MultiplayerManager : NetworkBehaviour
 
         if (IsServer)
         {
+            int oldHostXP = hostRating.Value;
+            int XPHostChange = calculator.CalculateXPScore(game.hostTotalScoreMP, game.clientTotalScoreMP, clientRating.Value);
+
             ProfileManager.Instance.AddGameResult(game.hostTotalScoreMP);
-            ProfileManager.Instance.UpdateXPNetwork(game.hostTotalScoreMP, game.clientTotalScoreMP, clientLevel.Value);
+            ProfileManager.Instance.UpdateXPNetwork(XPHostChange);
+
+            ui.AnimateLevelProgress(oldHostXP, XPHostChange);
+            hostRating.Value += XPHostChange;
+            int XPClientChange = calculator.CalculateXPScore(game.clientTotalScoreMP, game.hostTotalScoreMP, oldHostXP);
+            clientRating.Value += XPClientChange;
         }
         else
         {
+            int oldClientXP = clientRating.Value;
+            int XPClientChange = calculator.CalculateXPScore(game.clientTotalScoreMP, game.hostTotalScoreMP, hostRating.Value);
+
             ProfileManager.Instance.AddGameResult(game.clientTotalScoreMP);
-            ProfileManager.Instance.UpdateXPNetwork(game.clientTotalScoreMP, game.hostTotalScoreMP, hostLevel.Value);
+            ProfileManager.Instance.UpdateXPNetwork(XPClientChange);
+
+            ui.AnimateLevelProgress(oldClientXP, XPClientChange);
         }
     }
 

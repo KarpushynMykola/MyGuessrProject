@@ -133,7 +133,6 @@ public class GameManager : NetworkBehaviour
 
             map.TeleportToRandomLocation();
         }
-
         else if (!IsSpawned)
         {
             maxRounds = ui.tempMaxRounds;

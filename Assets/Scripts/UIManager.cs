@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
@@ -29,6 +30,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI summaryScoreText;
     //Підсумок раунду
     public TextMeshProUGUI currentRoundText;
+    public Slider ratingSlider;
+    public TextMeshProUGUI ratingScoreText;
 
     public TextMeshProUGUI hScoreText;
     public TextMeshProUGUI cScoreText;
@@ -45,11 +48,10 @@ public class UIManager : MonoBehaviour
     //Синглплеєр
     public TextMeshProUGUI roundsSettingsText;
     public TextMeshProUGUI timerSettingsText;
-    public Dropdown singleMapSelect;
+
     //Мультиплеєр
     public TextMeshProUGUI netRoundsSettingsText;
     public TextMeshProUGUI netTimerSettingsText;
-    public Dropdown netMapSelect;
 
     public TMP_Text joinCodeText;
     public TMP_InputField joinInputField;
@@ -57,6 +59,7 @@ public class UIManager : MonoBehaviour
     public Button hostButton;
     public Button joinButton;
     public Button startGameButton;
+    public TextMeshProUGUI startGameButtonText;
 
     //Профіль
     public TMP_Text nameText;
@@ -108,6 +111,11 @@ public class UIManager : MonoBehaviour
     public void SetNextButtonText(string text)
     {
         if (nextButtonText != null) nextButtonText.text = text;
+    }
+
+    public void SetStartButtonText(string text)
+    {
+        if (startGameButtonText != null) startGameButtonText.text = text;
     }
 
     public void SetJoinCodeText(string text)
@@ -403,6 +411,41 @@ public class UIManager : MonoBehaviour
 
             UpdateProfileUI();
         }
+    }
+    #endregion
+
+    #region АНІМАЦІЯ
+    public void AnimateLevelProgress(int oldTotalXP, int earnedXP)
+    {
+        StartCoroutine(XPAnimationRoutine(oldTotalXP, earnedXP));
+    }
+
+    IEnumerator XPAnimationRoutine(int oldXP, int XPChange)
+    {
+        float duration = 2.0f;
+        float elapsed = 0;
+
+        int xpPerLevel = 100;
+
+        int startLevel = oldXP / xpPerLevel;
+        int currentXPInLevel = oldXP % xpPerLevel;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+
+            int animatedXP = (int)Mathf.Lerp(oldXP, oldXP + XPChange, progress);
+
+            int xpInCurrentLevel = animatedXP % xpPerLevel;
+            ratingScoreText.text = $"{animatedXP} XP";
+
+            ratingSlider.value = (float)xpInCurrentLevel / xpPerLevel;
+
+            yield return null;
+        }
+        int finalTotalXP = oldXP + XPChange;
+        ratingSlider.value = (float)(finalTotalXP % xpPerLevel) / xpPerLevel;
     }
     #endregion
 }
