@@ -107,6 +107,20 @@ public class MultiplayerManager : NetworkBehaviour
         }
 
         clientReady.OnValueChanged += (oldVal, newVal) => {
+            if (game.currentRound >= game.maxRounds)
+            {
+                if (IsServer)
+                {
+                    ui.SetRestartButtonState(newVal);
+                }
+                else
+                {
+                    ui.SetRestartButtonText(newVal ? "Not Ready" : "Ready");
+                }
+                return;
+            }
+
+
             if (IsServer)
             {
                 ui.SetStartGameButtonState(newVal);
@@ -193,6 +207,21 @@ public class MultiplayerManager : NetworkBehaviour
             if (clientReady.Value)
             {
                 StartHostGameClientRpc();
+            }
+        }
+        else
+        {
+            ToggleReadyServerRpc();
+        }
+    }
+
+    public void HandleRestartButtonClick()
+    {
+        if (IsServer)
+        {
+            if (clientReady.Value)
+            {
+                RestartGameClientRpc();
             }
         }
         else
@@ -398,6 +427,10 @@ public class MultiplayerManager : NetworkBehaviour
             hostRating.Value += XPHostChange;
             int XPClientChange = calculator.CalculateXPScore(game.clientTotalScoreMP, game.hostTotalScoreMP, oldHostXP);
             clientRating.Value += XPClientChange;
+
+            clientReady.Value = false;
+            ui.SetRestartButtonText("Restart");
+            ui.SetRestartButtonState(false);
         }
         else
         {
@@ -408,6 +441,9 @@ public class MultiplayerManager : NetworkBehaviour
             ProfileManager.Instance.UpdateXPNetwork(XPClientChange);
 
             ui.AnimateLevelProgress(oldClientXP, XPClientChange);
+
+            ui.SetRestartButtonText("Ready");
+            ui.SetRestartButtonState(true);
         }
     }
 

@@ -11,6 +11,7 @@ public class GameManager : NetworkBehaviour
     public MultiplayerManager multiplayer;
     public TimerManager timer;
     public MapManager map;
+    public SoundManager sound;
     #endregion
 
     #region ÇÌ²ÍÍ²: Ëîã³êà ãðè
@@ -92,6 +93,8 @@ public class GameManager : NetworkBehaviour
 
         if (timer.isTimerRunning && !isResultPhase)
         {
+            float currentRemainingTime;
+
             if (IsSpawned)
             {
                 if (IsServer)
@@ -104,7 +107,7 @@ public class GameManager : NetworkBehaviour
                         timer.OnTimeUp(IsSpawned, IsServer);
                     }
                 }
-                ui.UpdateTimerUI(multiplayer.netRemainingTime.Value);
+                currentRemainingTime = multiplayer.netRemainingTime.Value;
             }
             else
             {
@@ -115,7 +118,18 @@ public class GameManager : NetworkBehaviour
                     timer.currentTime = 0;
                     timer.OnTimeUp(IsSpawned, IsServer);
                 }
-                ui.UpdateTimerUI(timer.currentTime);
+                currentRemainingTime = timer.currentTime;
+            }
+
+            ui.UpdateTimerUI(currentRemainingTime);
+
+            if (currentRemainingTime <= 10.5f && currentRemainingTime > 0.1f)
+            {
+                sound.StartTicking();
+            }
+            else
+            {
+                sound.StopTicking();
             }
         }
     }
@@ -207,9 +221,9 @@ public class GameManager : NetworkBehaviour
 
     public void OnRestartButtonClick()
     {
-        if (IsSpawned && IsServer)
+        if (IsSpawned)
         {
-            multiplayer.RestartGameClientRpc();
+            multiplayer.HandleRestartButtonClick();
         }
         else if (!IsSpawned)
         {

@@ -27,7 +27,11 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI roundCountText;
     public TextMeshProUGUI timerText;
 
+    //Фінальний підсумок
     public TextMeshProUGUI summaryScoreText;
+    public TextMeshProUGUI restartButtonText;
+    public Button restartButton;
+
     //Підсумок раунду
     public TextMeshProUGUI currentRoundText;
     public Slider ratingSlider;
@@ -118,6 +122,11 @@ public class UIManager : MonoBehaviour
         if (startGameButtonText != null) startGameButtonText.text = text;
     }
 
+    public void SetRestartButtonText(string text)
+    {
+        if (restartButtonText != null) restartButtonText.text = text;
+    }
+
     public void SetJoinCodeText(string text)
     {
         if (joinCodeText != null) joinCodeText.text = text;
@@ -136,6 +145,11 @@ public class UIManager : MonoBehaviour
     public void SetStartGameButtonState(bool isInteractable)
     {
         if (startGameButton != null) startGameButton.interactable = isInteractable;
+    }
+
+    public void SetRestartButtonState(bool isInteractable)
+    {
+        if (restartButton != null) restartButton.interactable = isInteractable;
     }
 
     public void SetCurrentRoundText(string text)
@@ -242,11 +256,11 @@ public class UIManager : MonoBehaviour
         mainMenuPanel.SetActive(false);
         multiplayerPanel.SetActive(true);
         UpdateSettingsUI();
+
     }
 
     public void ShowProfile()
     {
-
         showPanel(profilePanel, true);
         showPanel(mainMenuPanel, false);
         UpdateProfileUI();
@@ -281,10 +295,9 @@ public class UIManager : MonoBehaviour
             else
                 winnerText = "<color=#FFFFFF>Draw</color>";
 
-            summaryScoreText.text = $"<b>Final result</b>\n\n" +
-                                   $"{hostName}: {hostTotalScoreMP} points\n" +
-                                   $"{clientName}: {clientTotalScoreMP} points\n\n" +
-                                   $"{winnerText}";
+            summaryScoreText.text = $"{hostName}: {hostTotalScoreMP} points\n" +
+                                    $"{clientName}: {clientTotalScoreMP} points\n\n" +
+                                    $"{winnerText}";
         }
         else
         {
