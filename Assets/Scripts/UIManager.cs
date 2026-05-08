@@ -16,7 +16,8 @@ public class UIManager : MonoBehaviour
     public GameObject multiplayerPanel;
     public GameObject inGamePanel;
     public GameObject roundSummaryPanel;
-    public GameObject summaryPanel;
+    public GameObject summaryMultyplayerPanel;
+    public GameObject summarySingleplayerPanel;
     public GameObject lobbyPanel;
     public GameObject profilePanel;
 
@@ -28,7 +29,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI timerText;
 
     //Фінальний підсумок
-    public TextMeshProUGUI summaryScoreText;
+    public TextMeshProUGUI summaryMultyplayerScoreText;
+    public TextMeshProUGUI summarySingleplayerScoreText;
     public TextMeshProUGUI restartButtonText;
     public Button restartButton;
 
@@ -199,26 +201,34 @@ public class UIManager : MonoBehaviour
     #endregion
 
     #region Налаштування UI
-    public void StartGameUI()
+
+    private void RoundUI(int currentRound, int maxRounds)
     {
+        SetDistanceText("?");
+        SetPointsText("?");
+        SetRoundCountText($"{currentRound}/{maxRounds}");
+        SetNextButtonText("Guessr");
+        SetNextButtonState(false);
+    }
+
+    public void StartGameUI(int currentRound, int maxRounds)
+    {
+        RoundUI(currentRound, maxRounds);
         showPanel(singleplayerPanel, false);
         showPanel(inGamePanel, true);
-        SetNextButtonState(false);
-        SetNextButtonText("Guessr");
     }
 
-    public void RestartUI()
+    public void RestartUI(int currentRound, int maxRounds)
     {
-        SetNextButtonState(false);
-        showPanel(summaryPanel, false);
+        RoundUI(currentRound, maxRounds);
+        showPanel(summaryMultyplayerPanel, false);
+        showPanel(summarySingleplayerPanel, false);
         showPanel(roundSummaryPanel, false);
-        SetNextButtonText("Guessr");
     }
 
-    public void StartNextRoundUI()
+    public void StartNextRoundUI(int currentRound, int maxRounds)
     {
-        SetNextButtonText("Guessr");
-        SetNextButtonState(false);
+        RoundUI(currentRound, maxRounds);
         showPanel(roundSummaryPanel, false);
     }
     #endregion
@@ -240,7 +250,8 @@ public class UIManager : MonoBehaviour
         showPanel(multiplayerPanel, false);
         showPanel(roundSummaryPanel, false);
         showPanel(lobbyPanel, false);
-        showPanel(summaryPanel, false); 
+        showPanel(summaryMultyplayerPanel, false);
+        showPanel(summarySingleplayerPanel, false);
         showPanel(profilePanel, false);
     }
 
@@ -282,11 +293,12 @@ public class UIManager : MonoBehaviour
         int totalScore
         )
     {
-        summaryPanel.SetActive(true);
         roundSummaryPanel.SetActive(false);
 
         if (IsSpawned)
         {
+            summaryMultyplayerPanel.SetActive(true);
+
             string winnerText = "Final result";
             if (hostTotalScoreMP > clientTotalScoreMP)
                 winnerText = $"<color=#FFD700>{hostName} won</color>";
@@ -295,13 +307,14 @@ public class UIManager : MonoBehaviour
             else
                 winnerText = "<color=#FFFFFF>Draw</color>";
 
-            summaryScoreText.text = $"{hostName}: {hostTotalScoreMP} points\n" +
-                                    $"{clientName}: {clientTotalScoreMP} points\n\n" +
+            summaryMultyplayerScoreText.text = $"{hostName}: {hostTotalScoreMP} points " +
+                                    $"{clientName}: {clientTotalScoreMP} points " +
                                     $"{winnerText}";
         }
         else
         {
-            summaryScoreText.text = $"Final result:\n<color=#FFD700>{totalScore}</color> points";
+            summarySingleplayerPanel.SetActive(true);
+            summarySingleplayerScoreText.text = $"Final result:\n<color=#FFD700>{totalScore}</color> points";
         }
     }
 

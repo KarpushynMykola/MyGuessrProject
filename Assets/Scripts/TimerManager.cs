@@ -45,6 +45,7 @@ public class TimerManager : MonoBehaviour
         }
         else
         {
+
             if (game.hasClickedMap)
             {
                 game.ProcessResult(game.currentPanoLat, game.currentPanoLng, game.lastClickLat, game.lastClickLng);

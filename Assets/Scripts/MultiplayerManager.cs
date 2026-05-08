@@ -82,13 +82,6 @@ public class MultiplayerManager : NetworkBehaviour
 
         SyncProfileServerRpc(ProfileManager.Instance.activeProfile.playerName, ProfileManager.Instance.activeProfile.level);
 
-        if (!IsServer)
-        {
-            networkSyncPending = true;
-            game.maxRounds = netMaxRounds.Value;
-            timer.timeLimit = netTimeLimit.Value;
-        }
-
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientDisconnectCallback += HandleDisconnect;
@@ -96,14 +89,25 @@ public class MultiplayerManager : NetworkBehaviour
 
         if (IsServer)
         {
+            clientReady.Value = false;
+            hostReady.Value = false;
+
+            hostGuessLat.Value = 0;
+            hostGuessLng.Value = 0;
+            clientGuessLat.Value = 0;
+            clientGuessLng.Value = 0;
+
             ui.SetStartButtonText("Start");
             ui.SetStartGameButtonState(false);
-            clientReady.Value = false;
         }
         else
         {
             ui.SetStartButtonText("Ready");
             ui.SetStartGameButtonState(true);
+
+            networkSyncPending = true;
+            game.maxRounds = netMaxRounds.Value;
+            timer.timeLimit = netTimeLimit.Value;
         }
 
         clientReady.OnValueChanged += (oldVal, newVal) => {
@@ -357,7 +361,6 @@ public class MultiplayerManager : NetworkBehaviour
     {
         game.isResultPhase = true;
         timer.isTimerRunning = false;
-        ui.SetNextButtonState(true);
 
         float hDist = calculator.CalculateDistance(targetLat, targetLng, hLat, hLng);
         int hScore = (hReady) ? calculator.CalculateScore(hDist) : 0;

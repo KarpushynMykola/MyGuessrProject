@@ -32,8 +32,8 @@ public class GameManager : NetworkBehaviour
     public bool needToRetryRandom = false;
 
     //Координати
-    public float currentPanoLat = 50.4501f;
-    public float currentPanoLng = 30.5234f;
+    public float currentPanoLat;
+    public float currentPanoLng;
     public float lastClickLat;
     public float lastClickLng;
     #endregion
@@ -44,15 +44,9 @@ public class GameManager : NetworkBehaviour
 
     void Start()
     {
-        currentRound = 1;
-
         if (map.browserObject == null) return;
-
-        isGameStarted = false;
-
-        ui.SetNextButtonState(false);
+        ResetGameData();
         ui.ShowMainMenu();
-
         map.FindBrowserClient();
     }
 
@@ -68,8 +62,7 @@ public class GameManager : NetworkBehaviour
 
         if (map.browserClient != null && !map.isLoaded)
         {
-            PropertyInfo prop = map.browserClient.GetType().GetProperty("IsConnected");
-            if (prop != null && (bool)prop.GetValue(map.browserClient))
+            if (map.IsBrowserConnected())
             {
                 map.LoadPanorama();
                 map.isLoaded = true;
@@ -133,6 +126,21 @@ public class GameManager : NetworkBehaviour
             }
         }
     }
+
+    private void ResetGameData()
+    {
+        isGameStarted = false;
+        isResultPhase = false;
+        timer.isTimerRunning = false;
+        hasClickedMap = false;
+        needToUpdateUI = false;
+        needToRetryRandom = false;
+
+        currentRound = 1;
+        hostTotalScoreMP = 0;
+        clientTotalScoreMP = 0;
+        totalScore = 0;
+    }
     #endregion
 
     #region ЦИКЛ ГРИ (Start, Restart, NextRound, Qiut)
@@ -140,34 +148,36 @@ public class GameManager : NetworkBehaviour
     {
         if (IsSpawned && IsServer)
         {
-            multiplayer.netMaxRounds.Value = ui.tempMaxRounds;
-            multiplayer.netTimeLimit.Value = ui.tempTimeLimit;
-
-            multiplayer.StartGameClientRpc(ui.tempMaxRounds, ui.tempTimeLimit);
-
-            map.TeleportToRandomLocation();
+            StartMultyPlayerSession();
         }
         else if (!IsSpawned)
         {
-            maxRounds = ui.tempMaxRounds;
-            timer.timeLimit = ui.tempTimeLimit;
-            ExecuteStartGameLogic();
-            map.TeleportToRandomLocation();
+            StartSinglePlayerSession();
         }
+    }
+
+    private void StartMultyPlayerSession()
+    {
+        multiplayer.netMaxRounds.Value = ui.tempMaxRounds;
+        multiplayer.netTimeLimit.Value = ui.tempTimeLimit;
+        multiplayer.StartGameClientRpc(ui.tempMaxRounds, ui.tempTimeLimit);
+        map.TeleportToRandomLocation();
+    }
+
+    private void StartSinglePlayerSession()
+    {
+        maxRounds = ui.tempMaxRounds;
+        timer.timeLimit = ui.tempTimeLimit;
+        ExecuteStartGameLogic();
+        map.TeleportToRandomLocation();
     }
 
     public void ExecuteStartGameLogic()
     {
-        currentRound = 1;
-        totalScore = 0;
+        ResetGameData();
         isGameStarted = true;
-        isResultPhase = false;
 
-        ui.SetDistanceText("?");
-        ui.SetPointsText("?");
-        ui.SetRoundCountText($"{currentRound}/{maxRounds}");
-
-        ui.StartGameUI();
+        ui.StartGameUI(currentRound, maxRounds);
 
         timer.StartTimer(IsSpawned, IsServer);
     }
@@ -177,13 +187,10 @@ public class GameManager : NetworkBehaviour
         currentRound++;
         isResultPhase = false;
         hasClickedMap = false;
+
         map.UpdateBrowserMapState(false, false);
 
-        ui.SetDistanceText("?");
-        ui.SetPointsText("?");
-        ui.SetRoundCountText($"{currentRound}/{maxRounds}");
-
-        ui.StartNextRoundUI();
+        ui.StartNextRoundUI(currentRound, maxRounds);
 
         if (!IsSpawned || IsServer)
         {
@@ -195,22 +202,13 @@ public class GameManager : NetworkBehaviour
 
     public void RestartGame()
     {
-        totalScore = 0;
-        currentRound = 1;
-        hostTotalScoreMP = 0;
-        clientTotalScoreMP = 0;
-
-        isResultPhase = false;
-        hasClickedMap = false;
+        ResetGameData();
+        isGameStarted = true;
         timer.isTimerRunning = true;
 
         map.UpdateBrowserMapState(false, false);
 
-        ui.SetDistanceText("?");
-        ui.SetPointsText("?");
-        ui.SetRoundCountText($"{currentRound}/{maxRounds}");
-
-        ui.RestartUI();
+        ui.RestartUI(currentRound, maxRounds);
 
         if (IsServer || !IsSpawned)
         {
@@ -238,13 +236,12 @@ public class GameManager : NetworkBehaviour
             NetworkManager.Singleton.Shutdown();
         }
 
-        isGameStarted = false;
-        timer.isTimerRunning = false;
-        isResultPhase = false;
-
+        ResetGameData();
         ui.ShowMainMenu();
-
+        sound.StopTicking();
         map.UpdateBrowserMapState(false, false);
+
+        Debug.Log($"Чи почалася гра: {isGameStarted}");
     }
 
     public void QuitGame()
@@ -273,6 +270,8 @@ public class GameManager : NetworkBehaviour
 
         ui.SetDistanceText($"{(int)distance}km");
         ui.SetPointsText($"{roundScore} XP");
+        ui.SetNextButtonState(true);
+        sound.StopTicking();
         needToUpdateUI = true;
 
         if (currentRound >= maxRounds)

@@ -17,6 +17,7 @@ public class MapManager : MonoBehaviour
     [Header("Налаштування браузера")]
     public GameObject browserObject;
     public object browserClient;
+    private PropertyInfo _isConnectedProperty;
     public bool isUpdatingFromBrowser = false;
     public bool isLoaded = false;
 
@@ -49,10 +50,23 @@ public class MapManager : MonoBehaviour
         }
     }
 
+    public bool IsBrowserConnected()
+    {
+        if (browserClient == null) return false;
+
+        if (_isConnectedProperty == null)
+        {
+            _isConnectedProperty = browserClient.GetType().GetProperty("IsConnected");
+        }
+
+        return _isConnectedProperty != null && (bool)_isConnectedProperty.GetValue(browserClient);
+    }
+
     public void TeleportToRandomLocation()
     {
         bool IsSpawned = game.IsSpawned;
         bool IsServer = game.IsServer;
+        bool IsGameStarted = game.isGameStarted;
 
         float newLat, newLng;
 
